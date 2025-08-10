@@ -82,7 +82,7 @@
           "components": [
             {
               "internalType": "address",
-              "name": "senderl",
+              "name": "sender",
               "type": "address"
             },
             {
@@ -102,7 +102,7 @@
             },
             {
               "internalType": "uint256",
-              "name": "timestampt",
+              "name": "timestamp",
               "type": "uint256"
             },
             {

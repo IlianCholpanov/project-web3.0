@@ -1,3 +1,4 @@
+/* eslint-disable radix */
 /* eslint-disable no-underscore-dangle */
 /* eslint-disable consistent-return */
 import { createContext, useEffect, useState } from "react";
@@ -30,12 +31,42 @@ export function TransactionProvider({ children }) {
     message: "",
   });
   const [isLoading, setIsLoading] = useState(false);
-  const [transactionsCount, setTransactionsCount] = useState(
+  const [setTransactionCount] = useState(
     localStorage.getItem("transactionCount")
   );
+  const [transactions, setTransactions] = useState([]);
 
   function handleChange(e, name) {
     setFormData((prevState) => ({ ...prevState, [name]: e.target.value }));
+  }
+
+  async function getAllTransactions() {
+    try {
+      if (!ethereum) return alert("Please install metamask");
+
+      const transactionContract = getEthereumContract();
+
+      const avaialableTransactions =
+        await transactionContract.getAllTransactions();
+
+      const structuredTransactions = avaialableTransactions.map(
+        (transaction) => ({
+          addressTo: transaction.receiver,
+          addressFrom: transaction.sender,
+          timestamp: new Date(
+            transaction.timestamp.toNumber() * 1000
+          ).toLocaleString(),
+          message: transaction.message,
+          keyword: transaction.keyword,
+          amount: parseInt(transaction.amount._hex) / 10 ** 18,
+        })
+      );
+
+      console.log(structuredTransactions);
+      setTransactions(structuredTransactions);
+    } catch (error) {
+      console.error(error);
+    }
   }
 
   async function checkIfWalletIsConnected() {
@@ -47,10 +78,23 @@ export function TransactionProvider({ children }) {
       if (accounts.length) {
         setCurrentAccount(accounts[0]);
 
-        // getAllTransactions();
+        getAllTransactions();
       } else {
         console.log("No accounts found");
       }
+    } catch (error) {
+      console.error(error);
+
+      throw new Error("No ethereum object.");
+    }
+  }
+
+  async function checkIfTransactionsExist() {
+    try {
+      const transactionContract = getEthereumContract();
+      const transactionCount = await transactionContract.getTransactionCount();
+
+      window.localStorage.setItem("transactionCount", transactionCount);
     } catch (error) {
       console.error(error);
 
@@ -107,7 +151,9 @@ export function TransactionProvider({ children }) {
       console.log(`Success - ${transactionHash.hash}`);
 
       const transactionCount = await transactionContract.getTransactionCount();
-      setTransactionsCount(transactionCount.toNumber());
+      setTransactionCount(transactionCount.toNumber());
+
+      window.location.reload();
     } catch (error) {
       console.error(error);
 
@@ -117,6 +163,7 @@ export function TransactionProvider({ children }) {
 
   useEffect(() => {
     checkIfWalletIsConnected();
+    checkIfTransactionsExist();
   }, []);
 
   return (
@@ -128,6 +175,8 @@ export function TransactionProvider({ children }) {
         setFormData,
         handleChange,
         sendTransaction,
+        transactions,
+        isLoading,
       }}
     >
       {children}
